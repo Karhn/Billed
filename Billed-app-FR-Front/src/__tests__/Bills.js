@@ -2,10 +2,11 @@
  * @jest-environment jsdom
  */
 
-import {screen, waitFor} from "@testing-library/dom"
+import {fireEvent, screen, waitFor} from "@testing-library/dom"
 import BillsUI from "../views/BillsUI.js"
+import Bills from "../containers/Bills.js"
 import { bills } from "../fixtures/bills.js"
-import { ROUTES_PATH} from "../constants/routes.js";
+import { ROUTES, ROUTES_PATH} from "../constants/routes.js";
 import {localStorageMock} from "../__mocks__/localStorage.js";
 
 import router from "../app/Router.js";
@@ -34,6 +35,30 @@ describe("Given I am connected as an employee", () => {
       const antiChrono = (a, b) => ((a < b) ? 1 : -1)
       const datesSorted = [...dates].sort(antiChrono)
       expect(dates).toEqual(datesSorted)
+    })
+
+    test("Then I click on New Bill button, I should be redirected to NewBill page", () => {
+
+      document.body.innerHTML = BillsUI({data:[]})
+
+      const onNavigate = jest.fn((pathname) => {
+        document.body.innerHTML = ROUTES({pathname})
+      })
+
+      Object.defineProperty(window, 'localStorage', { value : localStorageMock })
+      window.localStorage.setItem('user', JSON.stringify({
+        type: 'Employee'
+      }))
+
+      const store = null
+      const billsContainer = new Bills({
+        document, onNavigate, store, localStorage: window.localStorage
+      })
+
+      const buttonNewBill = screen.getByTestId('btn-new-bill')
+      fireEvent.click(buttonNewBill)
+
+      expect(onNavigate).toHaveBeenCalledWith(ROUTES_PATH.NewBill)
     })
   })
 })
