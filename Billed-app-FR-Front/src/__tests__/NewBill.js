@@ -8,6 +8,7 @@ import NewBill from "../containers/NewBill.js"
 import { ROUTES_PATH } from "../constants/routes.js"
 import { localStorageMock  } from "../__mocks__/localStorage.js"
 import mockStore from "../__mocks__/store"
+import router from "../app/Router.js"
 
 jest.mock("../app/store", () => mockStore)
 
@@ -125,6 +126,154 @@ describe("Given I am connected as an employee", () => {
 
 describe("Give I am a user connected as Employee", () => {
   describe("When I navigate to NewBill", () => {
-    test("")
+    beforeEach(() => {
+      Object.defineProperty(window, "localStorage", { value: localStorageMock })
+      window.localStorage.setItem("useer", JSON.stringify({ 
+        type: "Employee", 
+        email: "a@a"
+      }))
+      document.body.innerHTML = NewBillUI()
+    })
+
+    test("Then I upload a valid file should call store.bills().create and set file info", async () => {
+      const createMock = jest.fn().mockResolvedValue({
+        fileUrl: "http://localhost:5678/public/bill.jpg",
+        key: "666"
+      })
+
+      const store = {
+        bills: () => ({
+          create: createMock
+        })
+      }
+
+      const onNavigate = jest.fn()
+
+      const newBill = new NewBill({
+        document,
+        onNavigate,
+        store,
+        localStorage: window.localStorage
+      })
+
+      const input = screen.getByTestId("file")
+      Object.defineProperty(input, "files", {
+        value: [new File(["x"], "bill.jpg", { type: "image/jpg"})]
+      })
+
+      const event = {
+        preventDefault: jest.fn(),
+        target: { value: "C:\\fakepath\\bill.jpg"}
+      }
+
+      newBill.handleChangeFile(event)
+
+      await Promise.resolve()
+
+      expect(createMock).toHaveBeenCalledWith({
+        data: expect.any(FormData),
+        headers: { noContentType: true }
+      })
+
+      expect(newBill.fileUrl).toBe("http://localhost:5678/public/bill.jpg")
+      expect(newBill.fileName).toBe("bill.jpg")
+      expect(newBill.billId).toBe("666")
+    })
+  })
+})
+
+describe("When an error occurs on API on NewBill page", () => {
+  beforeEach(() => {
+    jest.spyOn(mockStore, "bills")
+
+    Object.defineProperty(window, "localStorage", { value: localStorageMock })
+    window.localStorage.setItem("user", JSON.stringify({
+      type: "Employee",
+      email: "a@a"
+    }))
+
+    document.body.innerHTML = NewBillUI()
+  })
+
+  test("fails with 404 message error on file upload", async () => {
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+
+    const createMock = jest.fn().mockRejectedValue(new Error("Erreur 404"))
+
+    const store = {
+      bills: () => ({
+        create: createMock
+      })
+    }
+
+    const newBill = new NewBill({
+      document,
+      onNavigate: jest.fn(),
+      store,
+      localStorage: window.localStorage
+    })
+
+    const input = screen.getByTestId("file")
+    Object.defineProperty(input, "files", {
+      value: [new File(["x"], "bill.jpg", { type: "image/jpg"})]
+    })
+
+    const event = {
+      preventDefault: jest.fn(),
+      target: { value: "C:\\fakepath\\bill.jpg"}
+    }
+
+    newBill.handleChangeFile(event)
+
+    await new Promise(process.nextTick)
+
+    expect(createMock).toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalled()
+    expect(consoleSpy.mock.calls[0][0]).toBeInstanceOf(Error)
+    expect(consoleSpy.mock.calls[0][0].message).toMatch(/Erreur 404/)
+
+    consoleSpy.mockRestore()
+  })
+
+    test("fails with 500 message error on file upload", async () => {
+
+    const consoleSpy = jest.spyOn(console, "error").mockImplementation(() => {})
+
+    const createMock = jest.fn().mockRejectedValue(new Error("Erreur 500"))
+
+    const store = {
+      bills: () => ({
+        create: createMock
+      })
+    }
+
+    const newBill = new NewBill({
+      document,
+      onNavigate: jest.fn(),
+      store,
+      localStorage: window.localStorage
+    })
+
+    const input = screen.getByTestId("file")
+    Object.defineProperty(input, "files", {
+      value: [new File(["x"], "bill.jpg", { type: "image/jpg"})]
+    })
+
+    const event = {
+      preventDefault: jest.fn(),
+      target: { value: "C:\\fakepath\\bill.jpg"}
+    }
+
+    newBill.handleChangeFile(event)
+
+    await new Promise(process.nextTick)
+
+    expect(createMock).toHaveBeenCalled()
+    expect(consoleSpy).toHaveBeenCalled()
+    expect(consoleSpy.mock.calls[0][0]).toBeInstanceOf(Error)
+    expect(consoleSpy.mock.calls[0][0].message).toMatch(/Erreur 500/)
+
+    consoleSpy.mockRestore()
   })
 })
